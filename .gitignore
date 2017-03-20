@@ -14,6 +14,7 @@ str(trainset)
 dim(testset)
 str(testset)
 
+#fisrt,I want to get the full logistic model
 logisticmod=glm(trainset$DV~.,data=trainset,family="binomial")
 logisticmod
 ZeroProb<-predict(logisticmod,newdata=testset,type="response")
@@ -28,6 +29,59 @@ library(caret)
 confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
 logisticconfusionMatrix1=confusionMatrix
 
+#After checking p values of the variables in logisticmod, I will retain C,E,H,J,M,N in my redctedlogisticmod.
+reductedlogisticmod=glm(trainset$DV~C+E+H+J+M+N,data=trainset,family="binomial")
+summary(reductedlogisticmod)
+ZeroProb<-predict(reductedlogisticmod,newdata=testset,type="response")
+library(pROC)
+reductedlogisticroc1<-roc(response=testset$DV,predictor=ZeroProb,levels=rev(levels(testset$DV)))
+reductedlogisticauc1<-auc(reductedlogisticroc1)
+reductedlogisticauc1
+ZeroProb<-factor(ifelse(ZeroProb>0.5,"Zero","One"))
+confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
+reductedlogisticconfusionMatrix1=confusionMatrix
+
+#backward stepwise logistic model
+backwardlogisticmod=step(logisticmod)
+summary(backwardlogisticmod)
+#I will remove the variable if it is not siginificant
+ZeroProb<-predict(backwardlogisticmod,newdata=testset,type="response")
+library(pROC)
+backwardlogisticroc1<-roc(response=testset$DV,predictor=ZeroProb,levels=rev(levels(testset$DV)))
+backwardlogisticauc1<-auc(backwardlogisticroc1)
+backwardlogisticauc1
+ZeroProb<-factor(ifelse(ZeroProb>0.5,"Zero","One"))
+confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
+backwardlogisticconfusionMatrix1=confusionMatrix
+
+#forward stepwise logistic model
+nothing<-glm(trainset$DV~1,family="binomial")
+forwardlogisticmod=step(nothing,scope=list(lower=formula(nothing),uper=formula(logisticmod),direction="forward")
+summary(backwardlogisticmod)
+#I will remove the variable if it is not siginificant
+ZeroProb<-predict(forwardlogisticmod,newdata=testset,type="response")
+library(pROC)
+forwardlogisticroc1<-roc(response=testset$DV,predictor=ZeroProb,levels=rev(levels(testset$DV)))
+forwardlogisticauc1<-auc(forwardlogisticroc1)
+forwardlogisticauc1
+ZeroProb<-factor(ifelse(ZeroProb>0.5,"Zero","One"))
+confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
+forwardlogisticconfusionMatrix1=confusionMatrix
+
+#backwards selection and forwards selection 
+bothwayselectedlogisticmod=step(nothing,scope=list(lower=formula(nothing),uper=formula(logisticmod),direction="both")
+summary(bothwayselectedlogisticmod)
+#I will remove the variable if it is not siginificant
+ZeroProb<-predict(forwardlogisticmod,newdata=testset,type="response")
+library(pROC)
+bothwayselectedlogisticroc1<-roc(response=testset$DV,predictor=ZeroProb,levels=rev(levels(testset$DV)))
+bothwayselectedlogisticauc1<-auc(bothwayselectedlogisticroc1)
+bothwayselectedlogisticauc1
+ZeroProb<-factor(ifelse(ZeroProb>0.5,"Zero","One"))
+confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
+bothwayselectedlogisticconfusionMatrix1=confusionMatrix
+
+#lasso logistic model
 ctrl<-trainControl(method="LGOCV",summaryFunction=twoClassSummary,classProbs = TRUE, savePredictions = TRUE)
 lasso.mod=glmnet(x=as.matrix(trainset[,1:14]),y=trainset$DV,alpha=1,lambda=10^seq(10,-2,length=100),family="binomial")
 plot(lasso.mod)
@@ -45,6 +99,7 @@ ZeroProb<-factor(ifelse(ZeroProb>0.5,"Zero","One"))
 confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
 lassoconfusionMatrix1=confusionMatrix
 
+#ridge logistic model
 ctrl<-trainControl(method="LGOCV",summaryFunction=twoClassSummary,classProbs = TRUE, savePredictions = TRUE)
 glmnGrid<-expand.grid(.alpha=c(0),.lambda=10^seq(10,-2,length=100))
 glmnTuned<-train(x=trainset[,1:14],y=trainset$DV,method="glmnet",tuneGrid=glmnGrid,preProc=c("center","scale"),metric="ROC",trControl=ctrl)
@@ -60,6 +115,7 @@ ZeroProb<-factor(ifelse(ZeroProb>0.5,"Zero","One"))
 confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
 ridgeconfusionMatrix1=confusionMatrix
 
+#penalized logistic model(combination of lasso and ridge)
 ctrl<-trainControl(method="LGOCV",summaryFunction=twoClassSummary,classProbs = TRUE, savePredictions = TRUE)
 glmnGrid<-expand.grid(.alpha=seq(0,1,length=10),.lambda=10^seq(10,-2,length=100))
 glmnTuned<-train(x=trainset[,1:14],y=trainset$DV,method="glmnet",tuneGrid=glmnGrid,preProc=c("center","scale"),metric="ROC",trControl=ctrl)
