@@ -1,3 +1,6 @@
+load(?)
+
+#一次性把数据预处理好存储，然后不用每次运行的时候都来处理
 australian_xls$DV<-factor(ifelse(australian_xls$DV==0,"Zero","One"))
 names(australian_xls)
 dim(australian_xls)
@@ -6,13 +9,15 @@ australian_xls=na.omit(australian_xls)
 dim(australian_xls)
 sum(is.na(australian_xls))
 set.seed(2)
-ind <- sample(2,nrow(australian_xls),replace=TRUE,prob=c(0.7,0.3))
+ind <- sample(2,nrow(australian_xls),replace=TRUE,prob=c(0.7,0.3)) ?使用caret包里面的create partion 来划分集
 trainset<-australian_xls[ind==1,]
 testset<-australian_xls[ind==2,]
 dim(trainset)
 str(trainset)
 dim(testset)
 str(testset)
+
+
 
 #fisrt,I want to get the full logistic model
 logisticmod=glm(trainset$DV~.,data=trainset,family="binomial")
@@ -25,10 +30,12 @@ logisticauc1<-auc(logisticroc1)
 logisticauc1
 ZeroProb<-factor(ifelse(ZeroProb>0.5,"Zero","One"))
 library(glmnet)
-library(caret)
+library(caret)  #所以library都应该在开始完成
 confusionMatrix(data=ZeroProb,reference=testset$DV,positive="Zero")
 logisticconfusionMatrix1=confusionMatrix
 
+#框架应该按阶段分，不是按方法分
+#首先是数据划分，然后是建模，然后是模型评价
 #After checking p values of the variables in logisticmod, I will retain C,E,H,J,M,N in my redctedlogisticmod.
 reductedlogisticmod=glm(trainset$DV~C+E+H+J+M+N,data=trainset,family="binomial")
 summary(reductedlogisticmod)
