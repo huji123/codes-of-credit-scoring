@@ -1,26 +1,19 @@
-#数据预处理
-library(Hmisc)
-summary(dfModelInputData$flagSplit)
-dfModelInputData$flagSplit<-factor(dfModelInputData$flagSplit)
-dfModelInputData$flagSplit<-as.numeric(dfModelInputData$flagSplit)#方便之后处理缺失值，因为该变量为字符型，如果不转化为数值型该列会全部变为缺失值，且后面的subset函数select选项不能排除因子型变量,所以将它数值化了
-sum(is.na(dfModelInputData$flagSplit))
 dfModelInputData[dfModelInputData>9999990]<-NA#将大于9999990的值转化为NA
-dfModelInputData$flagSplit
-dfModelInputData<-data.frame(dfModelInputData)
-fillfuction<-function(x){impute(x,mean)}
-dfModelInputData<-lapply(dfModelInputData,fillfuction)#用均值插补每列
-sum(is.na(dfModelInputData))
-View(dfModelInputData)
+CM<-colMeans(dfModelInputData,na.rm=TRUE)
+index<-which(is.na(dfModelInputData),arr.ind=TRUE)
+dfModelInputData[index]<-CM[index[,2]]#用均值插补每列
+sum(is.na(dfModelInputData))#然后发现还有缺失值，缺失值个数刚好是样本个数，
+#之前试过用caret包里边的prePocess()函数预处理原数据集，警告有个变量无法参与计算，然后我就发现这个变量全部都是缺失值
+dfModelInputData<-dfModelInputData[,-which((names(dfModelInputData)%in%c("NUML_1SPDA034WGC")))]#把全是缺失值的那个变量删除了
+sum(is.na(dfModelInputData))#果然就没有缺失值了
 dfModelInputData$target<-factor(ifelse(dfModelInputData$target==0,"Zero","One"))
 trainset<-subset(dfModelInputData,dfModelInputData$flagSplit=="2",select=-dfModelInputData$flagSplit)#因为之前将字符型“train"变成了数值”2“
 testset<-subset(dfModelInputData,dfModelInputData$flagSplit=="1",select=-dfModelInputData$flagSplit)
-summary(dfModelInputData$target)
+
 #建模
-library(pROC)
-library(glmnet)
-library(caret)
 mod=glm(trainset$target~.,data=trainset,family="binomial")#logistic model
 logisticmod<-mod
+summary(logisticmod)
 #mod=step(logisticmod)#backwardlogisticmod
 #nothing<-glm(trainset$target~1,family="binomial")
 #mod=step(nothing,scope=list(lower=formula(nothing),uper=formula(logisticmod),direction="forward")#forwardlogisticmod
@@ -38,7 +31,7 @@ logisticmod<-mod
 OneProb<-predict(mod,newdata=testset,type="response")
 
 #评估
-roc1<-roc(response=testset$target,predictor=ZeroProb,levels=rev(levels(testset$target)))
+roc1<-roc(response=testset$target,predictor=OneProb,levels=rev(levels(testset$target)))
 auc1<-auc(roc1)
 auc1
 logisticsauc1<-auc1
